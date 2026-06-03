@@ -14,7 +14,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-matcher-enclave}"
 EIF="${EIF:-matcher.eif}"
 CPU_COUNT="${CPU_COUNT:-2}"
-MEMORY_MIB="${MEMORY_MIB:-3500}"
+MEMORY_MIB="${MEMORY_MIB:-2048}"
 PROXY_PORT="${PROXY_PORT:-443}"
 ACME_FLAG="${ACME_FLAG:---acme}"   # set to "" to skip Let's Encrypt (e.g. staging)
 
