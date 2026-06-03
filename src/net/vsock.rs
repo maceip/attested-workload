@@ -210,14 +210,17 @@ pub fn serve_tls_vsock(
     // even though the attestation path itself doesn't need it. Idempotent.
     let _ = setup_loopback();
     let kms_key = std::sync::Arc::new(kms_private_key);
-    let eat_bytes = std::sync::Arc::new(eat_cbor.to_vec());
+    let eat_bytes = std::sync::Arc::new(std::sync::RwLock::new(eat_cbor.to_vec()));
     // Hot-swappable TLS config — ACME updates this after provisioning a real cert
     let live_config: std::sync::Arc<std::sync::RwLock<std::sync::Arc<rustls::ServerConfig>>> =
         std::sync::Arc::new(std::sync::RwLock::new(tls_config));
     #[cfg(feature = "nitro")]
     let kms_state_arc = kms_state;
     eprintln!("[aw/vsock] TLS+vsock listening on port {VSOCK_PORT}");
-    eprintln!("[aw/vsock] EAT endpoint: GET /eat ({} bytes)", eat_bytes.len());
+    eprintln!(
+        "[aw/vsock] EAT endpoint: GET /eat ({} bytes)",
+        eat_bytes.read().unwrap().len()
+    );
     if kms_key.is_some() {
         eprintln!("[aw/vsock] KMS endpoints: GET /kms-attestation, POST /kms-unwrap");
     }
@@ -236,6 +239,7 @@ pub fn serve_tls_vsock(
         let live_cfg = live_config.clone();
         let body = attestation_json.to_string();
         let eat_body = eat_bytes.clone();
+        let eat_store = eat_bytes.clone();
         let kms_key = kms_key.clone();
         #[cfg(feature = "nitro")]
         let kms_st = kms_state_arc.clone();
@@ -304,16 +308,17 @@ pub fn serve_tls_vsock(
             // We split the response path so the CBOR bytes never pass
             // through the String-based response builder.
             if method == "GET" && path == "/eat" {
+                let eat_payload = eat_body.read().unwrap().clone();
                 let header = format!(
                     "HTTP/1.1 200 OK\r\n\
                      Content-Type: application/eat+cbor\r\n\
                      Content-Length: {}\r\n\
                      Access-Control-Allow-Origin: *\r\n\
                      \r\n",
-                    eat_body.len()
+                    eat_payload.len()
                 );
                 let _ = tls.write_all(header.as_bytes());
-                let _ = tls.write_all(&eat_body);
+                let _ = tls.write_all(&eat_payload);
                 let _ = tls.conn.send_close_notify();
                 let _ = tls.flush();
                 return;
@@ -349,7 +354,7 @@ pub fn serve_tls_vsock(
                     handle_kms_unwrap(&request, &kms_key)
                 }
                 ("POST", "/tls-cert") => {
-                    handle_tls_cert_swap(&request, &live_cfg)
+                    handle_tls_cert_swap(&request, &live_cfg, &eat_store, &kms_st)
                 }
                 ("POST", "/acme-challenge") => {
                     handle_acme_challenge(&request, &live_cfg)
@@ -423,8 +428,17 @@ fn handle_kms_attestation(kms_state: &Option<std::sync::Arc<KmsState>>) -> Strin
 fn handle_tls_cert_swap(
     request: &str,
     live_config: &std::sync::Arc<std::sync::RwLock<std::sync::Arc<rustls::ServerConfig>>>,
+    eat_store: &std::sync::Arc<std::sync::RwLock<Vec<u8>>>,
+    #[cfg(feature = "nitro")] kms_state: &Option<std::sync::Arc<KmsState>>,
 ) -> String {
-    swap_tls_config(request, live_config, false)
+    swap_tls_config(
+        request,
+        live_config,
+        false,
+        Some(eat_store),
+        #[cfg(feature = "nitro")]
+        Some(kms_state),
+    )
 }
 
 /// Handle POST /acme-challenge: install ACME challenge cert with acme-tls/1 ALPN.
@@ -433,13 +447,54 @@ fn handle_acme_challenge(
     request: &str,
     live_config: &std::sync::Arc<std::sync::RwLock<std::sync::Arc<rustls::ServerConfig>>>,
 ) -> String {
-    swap_tls_config(request, live_config, true)
+    swap_tls_config(request, live_config, true, None, None)
+}
+
+fn rebind_eat_after_le_cert(
+    pem: &[u8],
+    eat_store: &std::sync::Arc<std::sync::RwLock<Vec<u8>>>,
+    #[cfg(feature = "nitro")] kms_state: &Option<std::sync::Arc<KmsState>>,
+) -> anyhow::Result<()> {
+    use crate::eat::EatToken;
+    use crate::tee::TeeProvider;
+
+    #[cfg(not(feature = "nitro"))]
+    {
+        let _ = (pem, eat_store);
+        anyhow::bail!("EAT rebind requires nitro");
+    }
+
+    #[cfg(feature = "nitro")]
+    {
+        let certs: Vec<_> = rustls_pemfile::certs(&mut &*pem).collect::<Result<_, _>>()?;
+        let leaf = certs
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("no certificate in PEM"))?;
+        let leaf_der = leaf.to_vec();
+        let kms = kms_state
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("NSM state unavailable"))?;
+
+        let mut eat = {
+            let guard = eat_store.read().unwrap();
+            EatToken::from_cbor(&guard).map_err(|e| anyhow::anyhow!("eat decode: {e}"))?
+        };
+        eat.rebind_tls_spki_and_refresh_quote(&leaf_der, kms.nsm.as_ref())
+            .map_err(|e| anyhow::anyhow!("eat rebind: {e}"))?;
+        let new_cbor = eat
+            .to_cbor()
+            .map_err(|e| anyhow::anyhow!("eat encode: {e}"))?;
+        *eat_store.write().unwrap() = new_cbor;
+        Ok(())
+    }
 }
 
 fn swap_tls_config(
     request: &str,
     live_config: &std::sync::Arc<std::sync::RwLock<std::sync::Arc<rustls::ServerConfig>>>,
     acme_alpn: bool,
+    eat_store: Option<&std::sync::Arc<std::sync::RwLock<Vec<u8>>>>,
+    #[cfg(feature = "nitro")] kms_state: Option<&Option<std::sync::Arc<KmsState>>>,
 ) -> String {
     let body = match request.find("\r\n\r\n") {
         Some(pos) => &request[pos + 4..],
@@ -468,6 +523,13 @@ fn swap_tls_config(
                 eprintln!("[aw/vsock] ACME challenge cert installed (alpn: acme-tls/1 + http/1.1)");
             } else {
                 eprintln!("[aw/vsock] TLS cert hot-swapped");
+                if let (Some(store), Some(kms)) = (eat_store, kms_state) {
+                    if let Err(e) = rebind_eat_after_le_cert(body.as_bytes(), store, kms) {
+                        eprintln!("[aw/vsock] EAT rebind after LE cert failed: {e}");
+                    } else {
+                        eprintln!("[aw/vsock] EAT re-bound to LE cert SPKI + fresh quote");
+                    }
+                }
             }
             let mut guard = live_config.write().unwrap();
             *guard = std::sync::Arc::new(new_config);

@@ -191,6 +191,35 @@ impl EatToken {
     /// a quote containing that binding in `report_data`, then writes
     /// the quote bytes back into the EAT without invalidating the
     /// binding.
+    /// After ACME installs a public CA cert (no CMW extension), re-bind this EAT
+    /// to the new leaf SPKI and refresh the platform quote so `aw check` still
+    /// passes while browsers keep trusting Let's Encrypt.
+    pub fn rebind_tls_spki_and_refresh_quote(
+        &mut self,
+        leaf_cert_der: &[u8],
+        provider: &dyn crate::tee::TeeProvider,
+    ) -> Result<(), EatError> {
+        self.tls_spki_hash = crate::net::attested_tls::spki_hash_of_cert(leaf_cert_der)
+            .map_err(|e| EatError::Encode(e.to_string()))?;
+
+        let binding = self.binding_bytes();
+        let mut report_data = [0u8; 64];
+        report_data[..32].copy_from_slice(&binding);
+        report_data[32..64].copy_from_slice(&self.value_x[..32]);
+
+        let evidence = provider
+            .collect_evidence(&report_data)
+            .map_err(|e| EatError::Encode(e.to_string()))?;
+
+        self.platform_quote = evidence.raw_quote;
+        if self.binding_bytes() != binding {
+            return Err(EatError::Encode(
+                "binding invariant violated after quote refresh".into(),
+            ));
+        }
+        Ok(())
+    }
+
     pub fn binding_bytes(&self) -> [u8; 32] {
         let mut h = Sha256::new();
         h.update(self.version.to_be_bytes());

@@ -664,6 +664,19 @@ fn cmd_build(args: &[String]) -> anyhow::Result<()> {
 ///
 /// Every step is required. A verifier that skips (6) is running
 /// "attestation over TLS," which doesn't defend against relay / MITM.
+/// Parse CBOR body from an HTTP/1 response (used when GET /eat was requested).
+fn eat_cbor_from_http_response(resp: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let hdr_end = resp
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .ok_or_else(|| anyhow::anyhow!("no HTTP header terminator in /eat response"))?;
+    let body = &resp[hdr_end + 4..];
+    if body.is_empty() {
+        anyhow::bail!("empty /eat response body");
+    }
+    Ok(body.to_vec())
+}
+
 fn cmd_check(args: &[String]) -> anyhow::Result<()> {
     let url = args
         .iter()
@@ -725,14 +738,19 @@ fn cmd_check(args: &[String]) -> anyhow::Result<()> {
     let leaf_der = leaf.as_ref().to_vec();
     eprintln!("[aw] Leaf cert: {} bytes DER", leaf_der.len());
 
-    // Extract the CMW extension
-    let eat_cbor = net::attested_tls::extract_eat_from_cert(&leaf_der)?.ok_or_else(|| {
-        anyhow::anyhow!(
-            "cert has no CMW extension (OID 2.23.133.5.4.9) — \
-             this endpoint is not attested-TLS aware"
-        )
-    })?;
-    eprintln!("[aw] EAT extension: {} bytes", eat_cbor.len());
+    // Extract the CMW extension, or fall back to the /eat body (post-ACME LE cert path).
+    let eat_cbor = match net::attested_tls::extract_eat_from_cert(&leaf_der)? {
+        Some(cbor) => {
+            eprintln!("[aw] EAT extension: {} bytes", cbor.len());
+            cbor
+        }
+        None => {
+            eprintln!("[aw] No CMW in cert — using /eat response (post-ACME path)");
+            let body = eat_cbor_from_http_response(&resp)?;
+            eprintln!("[aw] EAT from /eat: {} bytes", body.len());
+            body
+        }
+    };
 
     // Decode
     let eat =
