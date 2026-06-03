@@ -39,7 +39,12 @@ matcher, API, etc.) listens on **`127.0.0.1:8080`**. The enclave forwards:
 - `/`, `/eat`, KMS, ACME — attestation plane (unchanged)
 - `/v1/*`, `/healthz` — **app-proxy** to the loopback workload (streaming)
 
-See `examples/hello-workload.py` for a minimal workload.
+After Let's Encrypt installs a public CA cert, call `/tls-cert` (or let
+`bountynet proxy --acme` do it). The engine re-binds the EAT to the new leaf
+SPKI and refreshes the Nitro quote so `aw check` keeps passing while browsers
+trust the certificate (since `79a5ea2`).
+
+See `examples/hello-workload.py` for a minimal loopback workload.
 
 ## Quick start (local development)
 
@@ -72,9 +77,11 @@ Full detail: `deploy/README.md`, `docs/BUILD.md`, `docs/STAGES.md`.
 
 | Platform | Model | Deploy script | Notes |
 |----------|-------|---------------|-------|
-| AWS Nitro | Isolated enclave + vsock | `deploy/nitro-deploy.sh` | App-proxy supported |
+| AWS Nitro | Isolated enclave + vsock | `deploy/nitro-deploy.sh` | **Live validated** — tenet matcher @ https://d851588d3b41.aeon.site/ |
 | AMD SEV-SNP | Confidential VM | `deploy/azure-cvm.sh` | Whole-VM TLS |
 | Intel TDX | Confidential VM | `deploy/gcp-tdx.sh` | Whole-VM TLS |
+
+**Release:** `v0.1.0` @ `e039216` (initial publish); production tenet deploy uses `79a5ea2` (post-ACME EAT rebind).
 
 Hardware regression fixtures: `testdata/chain/` (see `docs/HARDWARE_VALIDATION.md`).
 

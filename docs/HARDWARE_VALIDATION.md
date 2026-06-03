@@ -5,6 +5,32 @@ hardware. Everything in this document is code that's already passing
 unit + integration tests — the goal here is to confirm the tests
 match reality on silicon.
 
+## Proven on AWS Nitro (2026-06-03)
+
+**Consumer:** [tenet](https://github.com/maceip/sphinx-tahoe) matcher/mailbox  
+**Endpoint:** https://d851588d3b41.aeon.site/  
+**Engine:** attested-workload @ `79a5ea2328f2b30192e57b53913355dcd5e0201e`
+
+Validated on live hardware:
+
+1. Fresh Nitro quote via NSM inside enclave (`aw check --json`).
+2. SPKI channel binding (`tls_spki_hash` matches EAT).
+3. App-proxy to loopback matcher (`/healthz`, `/v1/*`).
+4. Let's Encrypt TLS-ALPN-01 + post-ACME EAT rebind (`79a5ea2`).
+5. CT log verification on the public certificate.
+
+```bash
+aw check --json https://d851588d3b41.aeon.site/
+# Quote binding: PASS, Quote signature: PASS, SPKI binding: PASS
+```
+
+Full deploy notes: tenet `deploy/HARDWARE_VALIDATION_2026-06-03.md`.
+
+This is the **reference Nitro validation** for app-proxy + attested TLS +
+co-located HTTP workload. TDX/SNP whole-VM paths remain on the runbook below.
+
+---
+
 ## What we're proving
 
 > "Is the code running on **that machine** the same code that's in
