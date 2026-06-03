@@ -1,0 +1,72 @@
+[package]
+name = "attested-workload"
+version = "0.1.0"
+edition = "2021"
+description = "Run services inside cloud TEEs with attested TLS and verifiable workload identity"
+license = "MIT"
+repository = "https://github.com/maceip/attested-workload"
+readme = "README.md"
+keywords = ["tee", "attestation", "nitro", "tdx", "sev-snp", "tls"]
+categories = ["cryptography", "authentication"]
+
+[lib]
+name = "attested_workload"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aw"
+path = "src/main.rs"
+
+# Compatibility alias: older deploy scripts and EIF images invoke `bountynet`.
+[[bin]]
+name = "bountynet"
+path = "src/main.rs"
+
+[features]
+default = ["nitro", "sev-snp", "tdx"]
+nitro = ["dep:serde_cbor", "dep:aws-nitro-enclaves-nsm-api", "dep:rsa", "dep:aes", "dep:cbc"]
+sev-snp = ["dep:p384"]
+tdx = []
+
+[dependencies]
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_bytes = "0.11"
+ciborium = "0.2"
+thiserror = "2"
+anyhow = "1"
+p384 = { version = "0.13", features = ["ecdsa"], optional = true }
+p256 = { version = "0.13", features = ["ecdsa"] }
+ecdsa = { version = "0.16", features = ["verifying"] }
+x509-cert = { version = "0.2", features = ["std"] }
+der = { version = "0.7", features = ["std"] }
+spki = "0.7"
+base64 = "0.22"
+serde_cbor = { version = "0.11", optional = true }
+rsa = { version = "0.9", optional = true }
+aes = { version = "0.8", optional = true }
+cbc = { version = "0.1", features = ["std", "block-padding"], optional = true }
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
+instant-acme = "0.8"
+rcgen = "0.13"
+tokio = { version = "1", features = ["full"] }
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["server", "tokio", "http1"] }
+http-body-util = "0.1"
+bytes = "1"
+governor = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+aws-nitro-enclaves-nsm-api = { version = "0.5", features = ["nix"], optional = true }
+nix = { version = "0.29", features = ["ioctl"] }
+libc = "0.2"
