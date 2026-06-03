@@ -18,7 +18,8 @@ HTTP service that must run inside a TEE without the operator reading traffic.
 Record in sphinx-tahoe `DEPENDENCIES.md`:
 
 ```text
-attested-workload @ <git sha>
+attested-workload @ e039216
+https://github.com/maceip/attested-workload
 ```
 
 Do not mix verifier from `runcards` and enclave shim from `bountynet-genesis`.
