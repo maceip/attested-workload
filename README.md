@@ -50,6 +50,12 @@ cd attested-workload && cargo build --release && cargo test
 - quote format — [unified-quote](https://github.com/maceip/unified-quote)
 - in-tee runtime — **attested-workload** (here)
 
+the receipts this runtime emits are in the unified-quote eat format. it depends
+on the canonical [unified-quote](https://github.com/maceip/unified-quote) crate
+directly (not a copy), and `tests/cross_verify.rs` checks that its own testdata
+receipts verify under that base-layer verifier — tdx (build→runtime chain) and
+aws nitro pass offline; snp needs a live amd kds fetch (`--ignored`).
+
 pages: https://maceip.github.io/attested-workload/
 
 <!-- agentic-canon -->
