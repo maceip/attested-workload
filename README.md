@@ -1,5 +1,9 @@
 # attested-workload
 
+> **Part of a layered confidential-compute platform — run agents inside cloud TEEs (AWS Nitro · AMD SEV-SNP · Intel TDX).**  
+> `agent platform` [cvm-agent](https://github.com/maceip/cvm-agent) · `attestation service` [attestation-service](https://github.com/maceip/attestation-service) · `quote format` [unified-quote](https://github.com/maceip/unified-quote) · `in-TEE runtime` **attested-workload** (this repo)
+
+
 Run an HTTP service **inside a cloud TEE**, prove what code is running with a
 hardware quote, and serve it over **attested TLS** where the certificate SPKI is
 bound into the quote.
