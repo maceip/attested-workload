@@ -22,7 +22,7 @@ attested-workload @ 79a5ea2328f2b30192e57b53913355dcd5e0201e
 https://github.com/maceip/attested-workload
 ```
 
-Do not mix verifier from `runcards` and enclave shim from `bountynet-genesis`.
+Do not mix verifier from `cvm-agent` and enclave shim from `bountynet-genesis`.
 
 ## Live deployment (2026-06-03)
 

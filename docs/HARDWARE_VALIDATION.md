@@ -131,10 +131,10 @@ sufficient. Priority order by cost to spin up:
 On your local machine (or any x86_64 Linux host):
 
 ```bash
-cd /home/cory/runcards
-cargo build --release --bin runcard
-file target/release/runcard     # should say ELF 64-bit LSB pie executable
-ls -la target/release/runcard    # should be ~13MB
+cd /home/cory/cvm-agent
+cargo build --release --bin aw
+file target/release/aw     # should say ELF 64-bit LSB pie executable
+ls -la target/release/aw    # should be ~13MB
 ```
 
 Copy the binary to each target machine. `scp`, `aws s3 cp`,

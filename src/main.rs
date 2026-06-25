@@ -11,8 +11,8 @@
 //!            Value X proves the output matches expectations
 //!
 //! Usage:
-//!   runcard build <source-dir> [--cmd "cargo build --release"] [--output ./out]
-//!   runcard verify <attestation.json>
+//!   aw build <source-dir> [--cmd "cargo build --release"] [--output ./out]
+//!   aw verify <attestation.json>
 //!
 //! The build subcommand:
 //!   1. Verifies it's running inside a TEE (refuses to run otherwise)
@@ -98,7 +98,7 @@ fn cli_name() -> String {
         .next()
         .and_then(|arg| Path::new(&arg).file_stem().map(|stem| stem.to_owned()))
         .and_then(|stem| stem.to_str().map(|s| s.to_string()))
-        .unwrap_or_else(|| "runcard".to_string())
+        .unwrap_or_else(|| "aw".to_string())
 }
 
 /// TCP-to-vsock proxy. Runs on the parent instance.
@@ -142,13 +142,13 @@ fn cmd_proxy(args: &[String]) -> anyhow::Result<()> {
         let proxy_port = port;
         std::thread::spawn(move || {
             // Wait for proxy + enclave to be ready
-            eprintln!("[runcard/acme] Waiting for enclave...");
+            eprintln!("[aw/acme] Waiting for enclave...");
             std::thread::sleep(std::time::Duration::from_secs(5));
 
             let rt = match tokio::runtime::Runtime::new() {
                 Ok(rt) => rt,
                 Err(e) => {
-                    eprintln!("[runcard/acme] Failed to create async runtime: {e}");
+                    eprintln!("[aw/acme] Failed to create async runtime: {e}");
                     return;
                 }
             };
@@ -169,17 +169,17 @@ fn cmd_proxy(args: &[String]) -> anyhow::Result<()> {
                         Ok(body) => match serde_json::from_str(&body) {
                             Ok(j) => j,
                             Err(e) => {
-                                eprintln!("[runcard/acme] Failed to parse attestation: {e}");
+                                eprintln!("[aw/acme] Failed to parse attestation: {e}");
                                 return;
                             }
                         },
                         Err(e) => {
-                            eprintln!("[runcard/acme] Failed to read response: {e}");
+                            eprintln!("[aw/acme] Failed to read response: {e}");
                             return;
                         }
                     },
                     Err(e) => {
-                        eprintln!("[runcard/acme] Enclave not reachable: {e}");
+                        eprintln!("[aw/acme] Enclave not reachable: {e}");
                         return;
                     }
                 };
@@ -187,22 +187,22 @@ fn cmd_proxy(args: &[String]) -> anyhow::Result<()> {
                 let domain = match att["domain"].as_str() {
                     Some(d) => d.to_string(),
                     None => {
-                        eprintln!("[runcard/acme] No domain in attestation");
+                        eprintln!("[aw/acme] No domain in attestation");
                         return;
                     }
                 };
 
-                eprintln!("[runcard/acme] Domain: {domain}");
+                eprintln!("[aw/acme] Domain: {domain}");
 
                 match net::acme::provision_cert_for_enclave(&domain, &enclave_url, acme_staging)
                     .await
                 {
                     Ok(()) => {
-                        eprintln!("[runcard/acme] === ACME COMPLETE ===");
-                        eprintln!("[runcard/acme] https://{domain} is now valid TLS");
+                        eprintln!("[aw/acme] === ACME COMPLETE ===");
+                        eprintln!("[aw/acme] https://{domain} is now valid TLS");
                     }
                     Err(e) => {
-                        eprintln!("[runcard/acme] FAILED: {e}");
+                        eprintln!("[aw/acme] FAILED: {e}");
                     }
                 }
             });
@@ -643,7 +643,7 @@ fn cmd_build(args: &[String]) -> anyhow::Result<()> {
 // VERIFY — anyone can run this, no TEE needed
 // ============================================================================
 
-/// `runcard check https://<domain>`
+/// `aw check https://<domain>`
 ///
 /// Performs a full attested-TLS verification against a live enclave:
 ///
@@ -681,7 +681,7 @@ fn cmd_check(args: &[String]) -> anyhow::Result<()> {
     let url = args
         .iter()
         .find(|a| !a.starts_with("--"))
-        .ok_or_else(|| anyhow::anyhow!("Usage: runcard check https://<domain>"))?;
+        .ok_or_else(|| anyhow::anyhow!("Usage: aw check https://<domain>"))?;
 
     // `--json` emits one machine-readable line to stdout on success, so callers
     // do not have to scrape the human stderr log.
@@ -964,7 +964,7 @@ fn cmd_check(args: &[String]) -> anyhow::Result<()> {
 
     if json_out {
         let out = serde_json::json!({
-            "schema": "runcard.check.v1",
+            "schema": "aw.check.v1",
             "host": host,
             "platform": format!("{:?}", platform),
             "value_x": value_x_hex,
@@ -1053,7 +1053,7 @@ fn cmd_verify(args: &[String]) -> anyhow::Result<()> {
     }
 
     let path =
-        att_path.ok_or_else(|| anyhow::anyhow!("Usage: runcard verify <attestation.json>"))?;
+        att_path.ok_or_else(|| anyhow::anyhow!("Usage: aw verify <attestation.json>"))?;
     let att_json: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
 
     verify_attestation_json(&att_json, source_dir.as_deref(), artifact_path.as_deref())
@@ -1699,7 +1699,7 @@ fn cmd_enclave(args: &[String]) -> anyhow::Result<()> {
     }
 
     // Try TLS on vsock first. If ring crypto fails (some enclaves), fall back to plain vsock.
-    eprintln!("[aw] Parent should run: runcard proxy --cid <enclave-cid>");
+    eprintln!("[aw] Parent should run: aw proxy --cid <enclave-cid>");
 
     match rustls::crypto::ring::default_provider().install_default() {
         Ok(_) => {
