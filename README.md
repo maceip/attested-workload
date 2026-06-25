@@ -1,106 +1,53 @@
 # attested-workload
 
-> **Part of a layered confidential-compute platform — run agents inside cloud TEEs (AWS Nitro · AMD SEV-SNP · Intel TDX).**  
-> `agent platform` [cvm-agent](https://github.com/maceip/cvm-agent) · `attestation service` [attestation-service](https://github.com/maceip/attestation-service) · `quote format` [unified-quote](https://github.com/maceip/unified-quote) · `in-TEE runtime` **attested-workload** (this repo)
+a workload inside the tee, served over attested tls.
 
+run an http service **inside a cloud tee**, prove what code is running with a
+hardware quote, and serve it over **attested tls** — the certificate spki is
+bound into the quote. one engine for **aws nitro**, **amd sev-snp**, and
+**intel tdx**. a co-located app on loopback can share the same attested channel
+(app-proxy).
 
-Run an HTTP service **inside a cloud TEE**, prove what code is running with a
-hardware quote, and serve it over **attested TLS** where the certificate SPKI is
-bound into the quote.
+## commands
 
-One engine for **AWS Nitro Enclaves**, **AMD SEV-SNP**, and **Intel TDX**. A
-co-located app on loopback can share the same attested channel (app-proxy).
+| command | role |
+|---|---|
+| `aw build` | attested build inside a tee (stage 0) |
+| `aw run` | attested runtime with attested tls (stage 1) |
+| `aw check <url>` | verify a live endpoint (quote + spki channel binding) |
+| `aw check --json <url>` | machine-readable verification (+ `tls_spki_hash`) |
+| `aw enclave` | nitro: build + serve in one enclave process |
+| `aw proxy --cid N` | nitro parent: tcp:443 → vsock (tls terminates in the enclave) |
 
-This repository is the **infrastructure layer**. Application projects (e.g.
-[tenet](https://github.com/maceip/sphinx-tahoe)) consume it; it is not tied to
-LLM hackathons, agent cards, or on-chain governance.
+`bountynet` is a compatibility alias for the same `aw` binary.
 
-## What you get
+## three checks
 
-| Command | Role |
-|---------|------|
-| `aw build` | Stage 0: attested build inside a TEE (ratchet + Value X) |
-| `aw run` | Stage 1: attested runtime with attested TLS |
-| `aw check <url>` | Verify a live endpoint (quote + SPKI channel binding) |
-| `aw check --json <url>` | Machine-readable verification (+ `tls_spki_hash` for pinning) |
-| `aw enclave` | Nitro: build + serve in one enclave process |
-| `aw proxy --cid N` | Nitro parent: TCP:443 → vsock (TLS terminates **in** enclave) |
+1. platform measurement matches (pcr0 / snp measurement / tdx mrtd).
+2. value x matches (sha384 over the workload source tree).
+3. tls spki is bound into the hardware quote (`sha256(cert_spki) == eat.tls_spki_hash`).
 
-The `bountynet` binary name is a **compatibility alias** for the same `aw` binary
-(older EIF images and deploy scripts).
-
-## Three checks (see `docs/INVARIANT.md`)
-
-1. **Platform measurement** matches (PCR0 / SNP measurement / TDX MRTD).
-2. **Value X** matches (sha384 over the workload source tree).
-3. **TLS SPKI** is bound into the hardware quote (`sha256(cert_spki) == eat.tls_spki_hash`).
-
-## App-proxy (co-located HTTP workload)
-
-On Nitro, attested TLS terminates inside the enclave. Application HTTP (your
-matcher, API, etc.) listens on **`127.0.0.1:8080`**. The enclave forwards:
-
-- `/`, `/eat`, KMS, ACME — attestation plane (unchanged)
-- `/v1/*`, `/healthz` — **app-proxy** to the loopback workload (streaming)
-
-After Let's Encrypt installs a public CA cert, call `/tls-cert` (or let
-`bountynet proxy --acme` do it). The engine re-binds the EAT to the new leaf
-SPKI and refreshes the Nitro quote so `aw check` keeps passing while browsers
-trust the certificate (since `79a5ea2`).
-
-See `examples/hello-workload.py` for a minimal loopback workload.
-
-## Quick start (local development)
+## quick start
 
 ```bash
 git clone https://github.com/maceip/attested-workload
-cd attested-workload
-cargo build --release
-cargo test
+cd attested-workload && cargo build --release && cargo test
+./target/release/aw check --json https://<host>/
 ```
 
-Verify against a running attested endpoint:
+## platform status
 
-```bash
-./target/release/aw check --json https://your-host/
-```
+| platform | model | notes |
+|---|---|---|
+| aws nitro | isolated enclave + vsock | live validated |
+| amd sev-snp | confidential vm | whole-vm tls |
+| intel tdx | confidential vm | whole-vm tls |
 
-## Nitro deploy (summary)
+## the stack
 
-On a Nitro-enabled EC2 instance:
+- agent platform — [cvm-agent](https://github.com/maceip/cvm-agent)
+- attestation service — [attestation-service](https://github.com/maceip/attestation-service)
+- quote format — [unified-quote](https://github.com/maceip/unified-quote)
+- in-tee runtime — **attested-workload** (here)
 
-```bash
-cargo build --release --bin bountynet
-cp target/release/bountynet ./bountynet-bin
-./deploy/nitro-deploy.sh
-```
-
-Full detail: `deploy/README.md`, `docs/BUILD.md`, `docs/STAGES.md`.
-
-## Platform status
-
-| Platform | Model | Deploy script | Notes |
-|----------|-------|---------------|-------|
-| AWS Nitro | Isolated enclave + vsock | `deploy/nitro-deploy.sh` | **Live validated** — tenet matcher @ https://d851588d3b41.aeon.site/ |
-| AMD SEV-SNP | Confidential VM | `deploy/azure-cvm.sh` | Whole-VM TLS |
-| Intel TDX | Confidential VM | `deploy/gcp-tdx.sh` | Whole-VM TLS |
-
-**Release:** `v0.1.0` @ `e039216` (initial publish); production tenet deploy uses `79a5ea2` (post-ACME EAT rebind).
-
-Hardware regression fixtures: `testdata/chain/` (see `docs/HARDWARE_VALIDATION.md`).
-
-## Lineage
-
-Extracted and focused from the attestation engines previously spread across
-`bountynet-genesis`, `unified-quote`, and `runcards`. Those repos may continue
-as product experiments; **this repo is the shared TEE runtime** other projects
-should pin.
-
-## Consumers
-
-- **[tenet](docs/consumers/tenet.md)** — privacy-preserving expert routing; matcher
-  runs as the loopback workload behind app-proxy.
-
-## License
-
-MIT
+pages: https://maceip.github.io/attested-workload/
