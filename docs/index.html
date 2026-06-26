@@ -137,6 +137,12 @@ footer a{color:var(--dim)} footer a:hover{color:var(--acc)}
 <span class="ok">ok</span> · platform measurement · value x · tls spki bound into quote</pre>
   </div>
 
+  <h2 class="reveal" style="--d:.28s">live mesh</h2>
+  <div class="card reveal" style="--d:.29s">
+    <p class="summary" style="margin:0">the attested-TLS pattern here — bind <code>sha256(cert_spki&nbsp;||&nbsp;X)</code> into the hardware quote, no ca needed — is live across <b>aws sev-snp</b>, <b>aws nitro</b>, and <b>azure sev-snp</b>. the azure node serves the layer above over attested-TLS at <code>attest.secure.build</code> and closes a <b>source&nbsp;→&nbsp;silicon</b> loop (in-tee build digest bound as <code>value_x</code>).
+      <br>re-verify any node yourself: <a class="link" href="https://maceip.github.io/unified-quote/live.html">unified-quote/live</a></p>
+  </div>
+
   <h2 class="reveal" style="--d:.3s">the stack</h2>
   <div class="card reveal" style="--d:.32s">
     <ul class="stack">

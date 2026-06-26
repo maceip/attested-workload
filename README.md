@@ -54,6 +54,19 @@ directly (not a copy), and `tests/cross_verify.rs` checks that its own testdata
 receipts verify under that base-layer verifier — tdx (build→runtime chain) and
 aws nitro pass offline; snp needs a live amd kds fetch (`--ignored`).
 
+## live mesh
+
+the attested-TLS pattern this runtime implements — bind `sha256(cert_spki || X)`
+into the hardware quote so the channel itself is attested, no ca required — is
+live across the stack's cloud-rooted nodes (re-verifiable with no tee of your
+own): **aws sev-snp**, **aws nitro**, and **azure sev-snp**. the azure node runs
+the layer above (`attestation-service`) over attested-TLS at
+`https://attest.secure.build:8443/` and closes a **source → silicon** loop — the
+binary is built in-tee by a self-hosted runner and its digest is bound as
+`value_x` into the amd-rooted vTPM ak quote, so github build provenance and the
+silicon agree on one value. status + remote re-verification commands:
+https://maceip.github.io/unified-quote/live.html
+
 pages: https://maceip.github.io/attested-workload/
 
 <!-- agentic-canon -->
