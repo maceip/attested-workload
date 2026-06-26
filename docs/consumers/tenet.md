@@ -6,7 +6,7 @@ HTTP service that must run inside a TEE without the operator reading traffic.
 
 ## How tenet uses attested-workload
 
-1. **Build EIF** with `bountynet-bin` from this repo and tenet's matcher entry
+1. **Build EIF** with `aw-bin` from this repo and tenet's matcher entry
    (`deploy/run_matcher.py` in sphinx-tahoe).
 2. **Inside enclave:** matcher listens on `127.0.0.1:8080`; `aw enclave` serves
    attested TLS and **app-proxies** `/v1/*` to it.
@@ -22,7 +22,7 @@ attested-workload @ 79a5ea2328f2b30192e57b53913355dcd5e0201e
 https://github.com/maceip/attested-workload
 ```
 
-Do not mix verifier from `cvm-agent` and enclave shim from `bountynet-genesis`.
+Do not mix verifier from `cvm-agent` and enclave shim from `unified-quote`.
 
 ## Live deployment (2026-06-03)
 

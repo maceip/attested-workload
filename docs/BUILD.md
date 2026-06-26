@@ -12,8 +12,8 @@ How to verify that a running enclave matches source code.
 From this repository:
 
 ```bash
-cargo build --release --bin bountynet
-cp target/release/bountynet ./bountynet-bin
+cargo build --release --bin aw
+cp target/release/aw ./aw-bin
 docker build -t aw-demo -f deploy/Dockerfile.enclave .
 nitro-cli build-enclave --docker-uri aw-demo:latest --output-file aw-demo.eif
 ```
@@ -46,8 +46,8 @@ checks the live endpoint:
 git clone https://github.com/maceip/attested-workload.git
 cd attested-workload
 git checkout <pinned-sha>
-cargo build --release --bin bountynet
-cp target/release/bountynet ./bountynet-bin
+cargo build --release --bin aw
+cp target/release/aw ./aw-bin
 docker build -t verify -f deploy/Dockerfile.enclave .
 nitro-cli build-enclave --docker-uri verify:latest --output-file verify.eif
 # PCR0 must match the running enclave
@@ -72,11 +72,11 @@ inside the enclave matches what you hashed.
 ```bash
 nitro-cli run-enclave --eif-path aw-demo.eif --memory 3500 --cpu-count 2
 CID=$(nitro-cli describe-enclaves | python3 -c 'import sys,json;print(json.load(sys.stdin)[0]["EnclaveCID"])')
-bountynet proxy --cid "$CID" --port 443 --acme
+aw proxy --cid "$CID" --port 443 --acme
 ```
 
 ## Consumers
 
 Application projects (e.g. [tenet](docs/consumers/tenet.md)) supply their own EIF
-Dockerfile that copies `bountynet-bin` from this repo and runs their loopback
+Dockerfile that copies `aw-bin` from this repo and runs their loopback
 workload on `:8080` for app-proxy.

@@ -92,7 +92,7 @@ impl TeeProvider for SnpProvider {
             match collect_via_configfs_tsm(report_data) {
                 Ok(evidence) => return Ok(evidence),
                 Err(e) => {
-                    eprintln!("[bountynet/snp] configfs-tsm failed ({e}), falling back to ioctl");
+                    eprintln!("[aw/snp] configfs-tsm failed ({e}), falling back to ioctl");
                 }
             }
         }
@@ -253,7 +253,7 @@ impl SnpProvider {
 fn collect_via_configfs_tsm(report_data: &[u8; 64]) -> Result<TeeEvidence, TeeError> {
     use std::fs;
 
-    let report_name = format!("bountynet-snp-{}", std::process::id());
+    let report_name = format!("aw-snp-{}", std::process::id());
     let report_dir = format!("/sys/kernel/config/tsm/report/{report_name}");
 
     fs::create_dir(&report_dir)

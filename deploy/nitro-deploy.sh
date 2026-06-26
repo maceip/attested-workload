@@ -7,8 +7,8 @@
 #
 # Prereqs: Nitro-enabled EC2, docker, aws-nitro-enclaves-cli.
 # Build from repo root:
-#   cargo build --release --bin bountynet
-#   cp target/release/bountynet ./bountynet-bin
+#   cargo build --release --bin aw
+#   cp target/release/aw ./aw-bin
 set -euo pipefail
 
 IMAGE="${IMAGE:-matcher-enclave}"
@@ -40,6 +40,6 @@ echo "[deploy] enclave CID = ${CID}"
 echo "[deploy] start the parent vsock bridge (TLS terminates IN the enclave)"
 # The parent sees only ciphertext; it provisions the cert via ACME but the TLS
 # key and termination live inside the enclave (src/net/vsock.rs app-proxy).
-bountynet proxy --cid "${CID}" --port "${PROXY_PORT}" ${ACME_FLAG}
+aw proxy --cid "${CID}" --port "${PROXY_PORT}" ${ACME_FLAG}
 
 echo "[deploy] up. verify from a client with:  aw check --json https://<this-host>"

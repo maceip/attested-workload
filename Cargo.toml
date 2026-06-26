@@ -17,11 +17,6 @@ path = "src/lib.rs"
 name = "aw"
 path = "src/main.rs"
 
-# Compatibility alias: older deploy scripts and EIF images invoke `bountynet`.
-[[bin]]
-name = "bountynet"
-path = "src/main.rs"
-
 [features]
 default = ["nitro", "sev-snp", "tdx"]
 nitro = ["dep:serde_cbor", "dep:aws-nitro-enclaves-nsm-api", "dep:rsa", "dep:aes", "dep:cbc"]

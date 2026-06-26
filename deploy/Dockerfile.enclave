@@ -2,8 +2,8 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
 
 RUN dnf install -y python3 iproute && dnf clean all
 
-# Built from this repo: cargo build --release --bin bountynet
-COPY bountynet-bin /usr/local/bin/bountynet
+# Built from this repo: cargo build --release --bin aw
+COPY aw-bin /usr/local/bin/attested-workload
 
 # Optional demo workload (app-proxy forwards /v1/* and /healthz here)
 COPY examples/hello-workload.py /app/hello-workload.py

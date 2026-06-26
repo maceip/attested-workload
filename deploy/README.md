@@ -5,8 +5,8 @@
 From this repository:
 
 ```bash
-cargo build --release --bin bountynet   # alias of aw
-cp target/release/bountynet ./bountynet-bin
+cargo build --release --bin aw   # alias of aw
+cp target/release/aw ./aw-bin
 ```
 
 ## AWS Nitro
@@ -36,7 +36,7 @@ Environment:
 ## Generic EIF with hello workload
 
 ```dockerfile
-# See Dockerfile.enclave — copies bountynet-bin + optional /src for Value X.
+# See Dockerfile.enclave — copies aw-bin + optional /src for Value X.
 # Launch examples/hello-workload.py on :8080 before or alongside aw enclave.
 ```
 

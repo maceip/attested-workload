@@ -522,7 +522,7 @@ fn cmd_build(args: &[String]) -> anyhow::Result<()> {
                     "mrtd": platform_measurement.as_ref().map(|m| hex::encode(m)),
                     "confidential_space_claims": {
                         "hwmodel": "GCP_INTEL_TDX",
-                        "swname": "BOUNTYNET",
+                        "swname": "ATTESTED-WORKLOAD",
                     }
                 }
             })
@@ -1457,9 +1457,9 @@ async fn cmd_run(args: &[String]) -> anyhow::Result<()> {
             .arg("-c")
             .arg(&cmd)
             .current_dir(&work_dir)
-            .env("BOUNTYNET_VALUE_X", hex::encode(current_x))
-            .env("BOUNTYNET_DOMAIN", &domain)
-            .env("BOUNTYNET_STAGE", "1")
+            .env("AW_VALUE_X", hex::encode(current_x))
+            .env("AW_DOMAIN", &domain)
+            .env("AW_STAGE", "1")
             .status()?;
         eprintln!("[aw] Workload exited: {status}");
     } else {
@@ -1955,7 +1955,7 @@ fn detect_build_cmd(dir: &Path) -> String {
     if dir.join("Cargo.toml").exists() {
         "cargo build --release".into()
     } else if dir.join("Dockerfile").exists() {
-        "docker build -t bountynet-build .".into()
+        "docker build -t aw-build .".into()
     } else if dir.join("package.json").exists() {
         "npm ci && npm run build".into()
     } else if dir.join("Makefile").exists() {
@@ -2056,7 +2056,7 @@ fn append_to_log(output_dir: &Path, att_path: &Path, value_x: &[u8; 48]) -> bool
 
 /// Create a temporary directory for the build workspace.
 fn tempdir() -> anyhow::Result<PathBuf> {
-    let dir = std::env::temp_dir().join(format!("bountynet-build-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("aw-build-{}", std::process::id()));
     if dir.exists() {
         std::fs::remove_dir_all(&dir)?;
     }

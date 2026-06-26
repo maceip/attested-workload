@@ -53,7 +53,7 @@ source files
   → stage 1 EAT (includes quote B, value_x, tls_spki_hash,
                  previous_attestation=stage0_cbor)
   → attested-TLS cert carrying stage 1 EAT at OID 2.23.133.5.4.9
-  → [remote client: bountynet check]
+  → [remote client: aw check]
   → [client verifies leaf quote, walks chain to stage 0,
      confirms value_x stable, checks SPKI binding]
 ```
@@ -153,7 +153,7 @@ gcloud compute instances create tdx-test \
   --maintenance-policy=TERMINATE
 
 # 2. Copy binary + a small test source tree
-gcloud compute scp target/release/bountynet tdx-test:~/bountynet --zone=us-central1-a
+gcloud compute scp target/release/aw tdx-test:~/aw --zone=us-central1-a
 gcloud compute scp --recurse testdata/sample-source tdx-test:~/source --zone=us-central1-a
 
 # 3. SSH in
@@ -165,7 +165,7 @@ ls /dev/tdx_guest /sys/kernel/config/tsm/report 2>&1
 
 # 5. Stage 0: attested build
 mkdir -p ~/out
-sudo ~/bountynet build ~/source --cmd 'echo stage0 build' --output ~/out 2>&1 | tee stage0.log
+sudo ~/aw build ~/source --cmd 'echo stage0 build' --output ~/out 2>&1 | tee stage0.log
 
 # 6. Confirm stage 0 outputs
 ls -la ~/out/
@@ -175,38 +175,38 @@ file ~/out/attestation.cbor    # should be "data" (CBOR is binary)
 wc -c ~/out/attestation.cbor   # typical size: 8-20KB for TDX
 
 # 7. Stage 1: attested runtime (serves on :443)
-sudo ~/bountynet run ~/source --attestation ~/out/attestation.cbor 2>&1 | tee stage1.log &
+sudo ~/aw run ~/source --attestation ~/out/attestation.cbor 2>&1 | tee stage1.log &
 sleep 3
 
 # 8. In another SSH session, run cmd_check against the local instance
-~/bountynet check https://127.0.0.1/ 2>&1 | tee check.log
+~/aw check https://127.0.0.1/ 2>&1 | tee check.log
 ```
 
 **Expected output of `cmd_check`** (ordered lines):
 
 ```
-[bountynet] === attested-TLS check ===
-[bountynet] Target: 127.0.0.1:443
-[bountynet] Leaf cert: <~300> bytes DER
-[bountynet] EAT extension: <~8000+> bytes
-[bountynet] EAT profile: https://bountynet.dev/eat/v2
-[bountynet] Platform:    Some(Tdx)
-[bountynet] Value X:     <96 hex chars>
-[bountynet] SPKI binding:    PASS
-[bountynet] Verifying platform quote (binding + signature)...
-[bountynet] Quote binding:   PASS
-[bountynet] Quote signature: PASS
-[bountynet]   MRTD: <hex>
-[bountynet]   RTMR0: <hex>
-[bountynet]   RTMR1: <hex>
+[aw] === attested-TLS check ===
+[aw] Target: 127.0.0.1:443
+[aw] Leaf cert: <~300> bytes DER
+[aw] EAT extension: <~8000+> bytes
+[aw] EAT profile: https://bountynet.dev/eat/v2
+[aw] Platform:    Some(Tdx)
+[aw] Value X:     <96 hex chars>
+[aw] SPKI binding:    PASS
+[aw] Verifying platform quote (binding + signature)...
+[aw] Quote binding:   PASS
+[aw] Quote signature: PASS
+[aw]   MRTD: <hex>
+[aw]   RTMR0: <hex>
+[aw]   RTMR1: <hex>
 ...
-[bountynet] Chain step 1: verifying previous stage (<N> bytes EAT)
-[bountynet]   ✓ step 1 quote verifies (Value X stable)
-[bountynet] Chain:           PASS (1 stage(s) walked)
-[bountynet] CT (SCTs):       none in cert (self-signed path — expected)
-[bountynet] Registry:        empty (no entries loaded)
-[bountynet] === Check Complete ===
-[bountynet] 127.0.0.1 is a genuine Tdx TEE running Value X <first-16-hex>
+[aw] Chain step 1: verifying previous stage (<N> bytes EAT)
+[aw]   ✓ step 1 quote verifies (Value X stable)
+[aw] Chain:           PASS (1 stage(s) walked)
+[aw] CT (SCTs):       none in cert (self-signed path — expected)
+[aw] Registry:        empty (no entries loaded)
+[aw] === Check Complete ===
+[aw] 127.0.0.1 is a genuine Tdx TEE running Value X <first-16-hex>
 ```
 
 **If this exact sequence appears, the chain is proven on TDX.** Save
@@ -226,7 +226,7 @@ aws ec2 run-instances \
 ```
 
 Inside the VM: `/dev/sev-guest` must exist, then the same
-`bountynet build → bountynet run → bountynet check` sequence. Expected
+`aw build → aw run → aw check` sequence. Expected
 output is the same except `Platform: Some(SevSnp)` and the measurements
 section shows `MEASUREMENT:` instead of `MRTD`.
 
@@ -242,9 +242,9 @@ the selected region.
 
 # Equivalent core az command used by the script:
 az vm create \
-  --resource-group bountynet-tee-validation \
+  --resource-group aw-tee-validation \
   --location northeurope \
-  --name bountynet-azure-snp \
+  --name aw-azure-snp \
   --size Standard_DC4as_v5 \
   --admin-username azureuser \
   --image "Canonical:0001-com-ubuntu-confidential-vm-jammy:22_04-lts-cvm:latest" \
@@ -266,7 +266,7 @@ On the 2026-05-01 `Standard_DC4as_v5` test this failed:
 
 ```text
 ls: cannot access '/dev/sev-guest': No such file or directory
-mkdir /sys/kernel/config/tsm/report/bountynet-probe: No such device or address
+mkdir /sys/kernel/config/tsm/report/aw-probe: No such device or address
 ```
 
 The kernel did report encrypted execution:
@@ -275,7 +275,7 @@ The kernel did report encrypted execution:
 Memory Encryption Features active: AMD SEV
 ```
 
-That proves Azure CVM provisioning, but not bountynet's stage chain.
+That proves Azure CVM provisioning, but not attested-workload's stage chain.
 Azure can be added to the proven platform set only after `cmd_build`
 can collect an evidence object that binds `EatToken::binding_bytes()`,
 `cmd_check` prints `Chain: PASS (1 stage(s) walked)`, and the captured
@@ -298,23 +298,23 @@ sudo amazon-linux-extras install aws-nitro-enclaves-cli -y
 sudo systemctl enable --now nitro-enclaves-allocator
 
 # 3. Build the .eif (reproducible build path — see BUILD.md)
-#    This packages bountynet + source into an EIF image
-#    Outputs bountynet.eif with PCR0 visible in nitro-cli describe
+#    This packages attested-workload + source into an EIF image
+#    Outputs aw.eif with PCR0 visible in nitro-cli describe
 
 # 4. Start the enclave
 sudo nitro-cli run-enclave \
   --cpu-count 2 \
   --memory 1024 \
-  --eif-path bountynet.eif \
+  --eif-path aw.eif \
   --debug-mode
 
 # 5. Note the enclave CID from the output
 #    Run the parent-side proxy
-~/bountynet proxy --cid <CID> &
+~/aw proxy --cid <CID> &
 
 # 6. From your laptop:
 curl -k https://<value_x>.aeon.site/  # should return EAT summary
-~/bountynet check https://<value_x>.aeon.site/ 2>&1 | tee check.log
+~/aw check https://<value_x>.aeon.site/ 2>&1 | tee check.log
 ```
 
 For Nitro, `cmd_enclave` runs stage 0 and serves it — there's no

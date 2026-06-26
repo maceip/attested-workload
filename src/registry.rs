@@ -335,7 +335,7 @@ impl Registry {
     }
 }
 
-/// Human-readable summary of a lookup result. Used by `bountynet check`.
+/// Human-readable summary of a lookup result. Used by `aw check`.
 pub fn describe(lookup: &Lookup) -> String {
     match lookup {
         Lookup::Found { entry, signature } => {

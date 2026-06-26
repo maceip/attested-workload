@@ -19,8 +19,6 @@ bound into the quote. one engine for **aws nitro**, **amd sev-snp**, and
 | `aw enclave` | nitro: build + serve in one enclave process |
 | `aw proxy --cid N` | nitro parent: tcp:443 → vsock (tls terminates in the enclave) |
 
-`bountynet` is a compatibility alias for the same `aw` binary.
-
 ## three checks
 
 1. platform measurement matches (pcr0 / snp measurement / tdx mrtd).

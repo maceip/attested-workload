@@ -7,7 +7,7 @@
 //!     [Enclave: vsock-to-loopback bridge] → 127.0.0.1:443 →
 //!       rustls TLS termination → attestation JSON
 //!
-//!   aw enclave / bountynet enclave — runs inside the enclave (vsock listener + TLS server)
+//!   aw enclave / aw enclave — runs inside the enclave (vsock listener + TLS server)
 //!   aw proxy    — runs on the parent (TCP:443 → vsock bridge)
 
 use anyhow::Result;
@@ -326,8 +326,8 @@ pub fn serve_tls_vsock(
 
             // App-proxy (matcher integration): forward application paths to the
             // workload on loopback inside the enclave. Attestation endpoints below
-            // stay served by bountynet and the EAT-bearing cert is unchanged, so
-            // `bountynet check` / channel-binding still pass. TLS terminates here
+            // stay served by attested-workload and the EAT-bearing cert is unchanged, so
+            // `aw check` / channel-binding still pass. TLS terminates here
             // (in the enclave), so the operator never sees plaintext matcher data.
             if path.starts_with("/v1/") || path == "/healthz" {
                 if let Err(e) = proxy_stream(&buf[..total], &mut tls) {

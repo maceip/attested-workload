@@ -3,4 +3,4 @@
 set -euo pipefail
 
 python3 /app/hello-workload.py &
-exec bountynet enclave /app --cmd true
+exec aw enclave /app --cmd true
