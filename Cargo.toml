@@ -28,7 +28,7 @@ sha2 = "0.10"
 # The base layer: attested-workload emits receipts in the unified-quote eat
 # format. We pull in the canonical crate so the runtime's receipts can be
 # (and are, in tests) verified by exactly the base-layer verifier — no drift.
-unified-quote = { git = "https://github.com/maceip/unified-quote", package = "unified-quote" }
+unified-quote = { git = "https://github.com/maceip/unified-quote", tag = "v0.1.4", package = "unified-quote" }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"
 hex = "0.4"
