@@ -26,9 +26,8 @@ tdx = []
 [dependencies]
 sha2 = "0.10"
 # The base layer: attested-workload emits receipts in the unified-quote eat
-# format. We pull in the canonical crate so the runtime's receipts can be
-# (and are, in tests) verified by exactly the base-layer verifier — no drift.
-unified-quote = { git = "https://github.com/maceip/unified-quote", tag = "v0.1.4", package = "unified-quote" }
+# format. Pinned to the same hardened commit as the rest of tee-stack.
+unified-quote = { git = "https://github.com/maceip/unified-quote", rev = "fb4bb069528b1a5d586c10332693334e48e76a1c", package = "unified-quote", features = ["desktop"] }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"
 hex = "0.4"
